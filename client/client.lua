@@ -142,12 +142,14 @@ function Rental:showRentalMenu(locationIndex, vehicles)
     if not input or not input[1] then
         if DoesEntityExist(ped) then
             Wait(100)
-            PlayAmbientSpeech1(ped, 'GENERIC_FUCK_YOU', 'SPEECH_PARAMS_FORCE_SHOUTED_CLEAR')
+            PlayAmbientSpeech1(ped, 'GENERIC_FUCK_YOU', 'SPEECH_PARAMS_FORCE')
         end
         return
     end
 
     local selectedVehicle = nil
+    local location = Config.RentalLocations[locationIndex]
+    local spawnPoint = rentalInstance:getFreeSpawnPoint(location)
     for _, v in pairs(vehicles) do
         if v.model == input[1] then
             selectedVehicle = v
@@ -155,7 +157,7 @@ function Rental:showRentalMenu(locationIndex, vehicles)
         end
     end
 
-    if selectedVehicle then
+    if selectedVehicle and spawnPoint then
         self:playInteractionAnimation(ped)
         local success = lib.progressBar({
             duration = 3000,
@@ -169,12 +171,27 @@ function Rental:showRentalMenu(locationIndex, vehicles)
 
         if success then
             if DoesEntityExist(ped) then
-                PlayAmbientSpeech1(ped, 'GENERIC_THANKS', 'SPEECH_PARAMS_FORCE_NORMAL')
+                PlayAmbientSpeech1(ped, 'GENERIC_THANKS', 'SPEECH_PARAMS_FORCE_SHOUTED_CRITICAL')
             end
             TriggerServerEvent('rental:server:rentVehicle', {location = locationIndex, vehicle = selectedVehicle})
         end
+    else
+        TriggerEvent('QBCore:Notify', 'All parking spots are occupied.', 'error')
     end
 end
+
+RegisterNetEvent('rental:client:requestSpawnPoint', function(model, plate, locationIndex)
+    if not rentalInstance then return end
+    local location = Config.RentalLocations[locationIndex]
+    if not location then return end
+
+    local spawnPoint = rentalInstance:getFreeSpawnPoint(location)
+    if spawnPoint then
+        local heading = spawnPoint.w or 0.0
+        rentalInstance:spawnVehicle(model, spawnPoint, heading, plate)
+    end
+end)
+
 
 function Rental:playInteractionAnimation(ped)
     local animDict = 'amb@world_human_hang_out_street@male_a@idle_a'
@@ -245,25 +262,3 @@ AddEventHandler('onClientResourceStart', function(resourceName)
     end
 end)
 
-RegisterNetEvent('rental:client:requestSpawnPoint', function(model, plate, locationIndex)
-    if not rentalInstance then return end
-    local location = Config.RentalLocations[locationIndex]
-    if not location then return end
-
-    local spawnPoint = rentalInstance:getFreeSpawnPoint(location)
-    if spawnPoint then
-        local heading = spawnPoint.w or 0.0
-        rentalInstance:spawnVehicle(model, spawnPoint, heading, plate)
-    else
-        TriggerEvent('QBCore:Notify', 'All parking spots are occupied. You have been refunded.', 'error')
-
-        local vehiclePrice
-        for _, v in pairs(location.vehicles) do
-            if v.model == model then vehiclePrice = v.price break end
-        end
-
-        if vehiclePrice then
-            TriggerServerEvent('rental:server:refundMoney', vehiclePrice)
-        end
-    end
-end)
