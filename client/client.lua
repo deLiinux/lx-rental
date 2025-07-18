@@ -13,7 +13,6 @@ function Rental:new(config)
     return self
 end
 
--- Model and Animation Loading
 function Rental:loadModel(model)
     RequestModel(model)
     while not HasModelLoaded(model) do Wait(50) end
@@ -24,7 +23,6 @@ function Rental:loadAnimDict(dict)
     while not HasAnimDictLoaded(dict) do Wait(10) end
 end
 
--- Ped Spawning and Setup
 function Rental:spawnBlips(locations)
     for i, loc in ipairs(locations) do
         local coords = loc.coords
@@ -49,7 +47,12 @@ function Rental:spawnPeds(locations)
     end
 end
 
+local isSpawning = {}
+
 function Rental:spawnPed(index, data)
+    if isSpawning[index] then return end
+    isSpawning[index] = true
+
     local model = joaat(data.pedModel)
     self:loadModel(model)
 
@@ -61,6 +64,8 @@ function Rental:spawnPed(index, data)
     SetBlockingOfNonTemporaryEvents(ped, true)
 
     self.peds[index] = ped
+    isSpawning[index] = false
+
     self:updatePedTarget(index, data)
 end
 
@@ -77,7 +82,6 @@ function Rental:updatePedTarget(index, data)
     exports.ox_target:addLocalEntity(self.peds[index], targets)
 end
 
--- Vehicle spawning and spawn point management
 function Rental:isSpawnPointFree(coords, radius)
     local vehicles = GetGamePool('CVehicle')
     for _, vehicle in ipairs(vehicles) do
@@ -120,7 +124,6 @@ function Rental:spawnVehicle(model, coords, heading, plate)
     TriggerServerEvent('rental:server:giveKeys', netId)
 end
 
--- Interaction and Menu
 function Rental:showRentalMenu(locationIndex, vehicles)
     local ped = self.peds[locationIndex]
     if DoesEntityExist(ped) then
@@ -129,15 +132,17 @@ function Rental:showRentalMenu(locationIndex, vehicles)
 
     local vehicleOptions = {}
     for _, v in pairs(vehicles) do
-        table.insert(vehicleOptions, {label = string.format("%s ($%d)", v.label, v.price), value = v.model})
+        table.insert(vehicleOptions, { label = string.format("%s ($%d)", v.label, v.price), value = v.model })
     end
 
-    local input = lib.inputDialog('Select a vehicle to rent', {{
-        type = 'select',
-        label = 'Vehicle',
-        options = vehicleOptions,
-        required = true
-    }})
+    local input = lib.inputDialog('Select a vehicle to rent', {
+        {
+            type = 'select',
+            label = 'Vehicle',
+            options = vehicleOptions,
+            required = true
+        }
+    })
 
     if not input or not input[1] then
         if DoesEntityExist(ped) then
@@ -147,15 +152,32 @@ function Rental:showRentalMenu(locationIndex, vehicles)
         return
     end
 
-    local selectedVehicle = nil
-    local location = Config.RentalLocations[locationIndex]
-    local spawnPoint = rentalInstance:getFreeSpawnPoint(location)
+    local paymentInput = lib.inputDialog('Choose Payment Method', {
+        {
+            type = 'select',
+            label = 'Payment',
+            options = {
+                { label = 'Bank', value = 'bank' },
+                { label = 'Cash', value = 'cash' }
+            },
+            required = true
+        }
+    })
+
+    if not paymentInput or not paymentInput[1] then
+        return
+    end
+
+    local selectedVehicle
     for _, v in pairs(vehicles) do
         if v.model == input[1] then
             selectedVehicle = v
             break
         end
     end
+
+    local location = Config.RentalLocations[locationIndex]
+    local spawnPoint = self:getFreeSpawnPoint(location)
 
     if selectedVehicle and spawnPoint then
         self:playInteractionAnimation(ped)
@@ -164,7 +186,7 @@ function Rental:showRentalMenu(locationIndex, vehicles)
             label = 'Closing deal...',
             useWhileDead = false,
             canCancel = false,
-            disable = {move = true, car = true, combat = true}
+            disable = { move = true, car = true, combat = true }
         })
 
         self:clearAnimations(ped)
@@ -173,12 +195,18 @@ function Rental:showRentalMenu(locationIndex, vehicles)
             if DoesEntityExist(ped) then
                 PlayAmbientSpeech1(ped, 'GENERIC_THANKS', 'SPEECH_PARAMS_FORCE_SHOUTED_CRITICAL')
             end
-            TriggerServerEvent('rental:server:rentVehicle', {location = locationIndex, vehicle = selectedVehicle})
+
+            TriggerServerEvent('rental:server:rentVehicle', {
+                location = locationIndex,
+                vehicle = selectedVehicle,
+                paymentType = paymentInput[1]
+            })
         end
     else
-        TriggerEvent('QBCore:Notify', 'All parking spots are occupied.', 'error')
+        lib.notify({ title = 'Rental', description = 'All parking spots are occupied.', type = 'error' })
     end
 end
+
 
 RegisterNetEvent('rental:client:requestSpawnPoint', function(model, plate, locationIndex)
     if not rentalInstance then return end
@@ -209,13 +237,11 @@ function Rental:clearAnimations(ped)
     if DoesEntityExist(ped) then ClearPedTasks(ped) end
 end
 
--- Utility
 function Rental:getGroundZ(coords)
     local foundGround, z = GetGroundZFor_3dCoord(coords.x, coords.y, coords.z + 10.0, 0)
     return foundGround and z or coords.z
 end
 
--- Proximity checks & ped spawning handler (outside class)
 
 local function isNear(coords)
     local playerCoords = GetEntityCoords(PlayerPedId())
@@ -244,8 +270,6 @@ local function handlePedSpawning()
     end
 end
 
--- Event handlers
-
 AddEventHandler('onClientResourceStart', function(resourceName)
     if resourceName == GetCurrentResourceName() then
         rentalInstance = Rental:new(Config)
@@ -256,7 +280,7 @@ AddEventHandler('onClientResourceStart', function(resourceName)
         CreateThread(function()
             while true do
                 handlePedSpawning()
-                Wait(2000) -- adjust timing if needed
+                Wait(2000)
             end
         end)
     end
