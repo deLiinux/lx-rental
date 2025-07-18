@@ -28,9 +28,14 @@ function Rental:handleRentRequest(src, data)
     local vehicle = data.vehicle
     if not vehicle then return false, "Invalid vehicle data" end
 
-    if not Player.Functions.RemoveMoney('cash', vehicle.price) then
+    if Player.Functions.RemoveMoney('cash', vehicle.price) then
+        return true
+    elseif Player.Functions.RemoveMoney('bank', vehicle.price) then
+        return true
+    else
         return false, "Not enough money"
     end
+    
 
     local plate = self:generatePlate()
 
