@@ -75,15 +75,6 @@ function Rental:registerEvents()
         end
     end)
 
-    RegisterNetEvent('rental:server:refundMoney', function(amount)
-        local src = source
-        local Player = QBCore.Functions.GetPlayer(src)
-        if Player and amount and amount > 0 then
-            Player.Functions.AddMoney('cash', amount)
-            print("Refunded $" .. amount .. " to player " .. src)
-        end
-    end)
-
     AddEventHandler('onResourceStart', function(resourceName)
         if resourceName == GetCurrentResourceName() then
             self:onResourceStart()
