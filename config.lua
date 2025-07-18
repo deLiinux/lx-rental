@@ -1,5 +1,9 @@
 Config = {}
 
+Config.targetDistance = 3.0
+Config.spawnRange = 50
+Config.despawnRange = 70
+
 Config.RentalLocations = {
     {
         pedModel = 'a_m_y_business_03',
@@ -34,7 +38,3 @@ Config.RentalLocations = {
         }
     },
 }
-
-Config.targetDistance = 3.0
-Config.spawnRange = 50
-Config.despawnRange = 70
