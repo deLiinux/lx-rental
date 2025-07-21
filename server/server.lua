@@ -39,7 +39,7 @@ function Rental:handleRentRequest(src, data)
         owner = src,
         vehicle = vehicle.model,
         price = vehicle.price,
-        rentedAt = os.time() - -- Use later?
+        rentedAt = os.time() -- Use later?
     }
 
     return true, {
