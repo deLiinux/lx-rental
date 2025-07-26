@@ -13,7 +13,7 @@ end
 function Rental:generatePlate()
     local plate
     repeat
-        plate = string.format("RENT%03d", math.random(0, 999))
+        plate = string.format("RENT%03d", math.random(0, 9999))
     until not self.rentedVehicles[plate]
     return plate
 end
@@ -50,17 +50,17 @@ function Rental:handleRentRequest(src, data)
 end
 
 function Rental:registerEvents()
-    RegisterNetEvent('rental:server:rentVehicle', function(data)
+    RegisterNetEvent('lx-rental:server:rentVehicle', function(data)
         local src = source
         local success, resp = self:handleRentRequest(src, data)
         if success then
-            TriggerClientEvent('rental:client:requestSpawnPoint', src, resp.model, resp.plate, resp.location)
+            TriggerClientEvent('lx-rental:client:requestSpawnPoint', src, resp.model, resp.plate, resp.location)
         else
             TriggerClientEvent('QBCore:Notify', src, resp or 'Rental failed', 'error')
         end
     end)
 
-    RegisterNetEvent('rental:server:giveKeys', function(netId)
+    RegisterNetEvent('lx-rental:server:giveKeys', function(netId)
         local src = source
         local vehicle = NetworkGetEntityFromNetworkId(netId)
         if vehicle and DoesEntityExist(vehicle) then
@@ -73,6 +73,16 @@ function Rental:registerEvents()
         else
             print("Invalid vehicle entity for keys")
         end
+    end)
+
+    RegisterNetEvent('lx-rental:server:giveRentalPapers', function(plate)
+        local src = source
+        local metadata = {
+            description = 'Rental Papers for: ' .. plate,
+            plate = plate
+        }
+    
+        exports.ox_inventory:AddItem(src, 'rentalpapers', 1, metadata)
     end)
 
     AddEventHandler('onResourceStart', function(resourceName)

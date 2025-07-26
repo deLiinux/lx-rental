@@ -121,7 +121,8 @@ function Rental:spawnVehicle(model, coords, heading, plate)
     local netId = NetworkGetNetworkIdFromEntity(vehicle)
     SetNetworkIdCanMigrate(netId, true)
 
-    TriggerServerEvent('rental:server:giveKeys', netId)
+    TriggerServerEvent('lx-rental:server:giveKeys', netId)
+    TriggerServerEvent('lx-rental:server:giveRentalPapers', plate)
 end
 
 function Rental:showRentalMenu(locationIndex, vehicles)
@@ -196,7 +197,7 @@ function Rental:showRentalMenu(locationIndex, vehicles)
                 PlayAmbientSpeech1(ped, 'GENERIC_THANKS', 'SPEECH_PARAMS_FORCE_SHOUTED_CRITICAL')
             end
 
-            TriggerServerEvent('rental:server:rentVehicle', {
+            TriggerServerEvent('lx-rental:server:rentVehicle', {
                 location = locationIndex,
                 vehicle = selectedVehicle,
                 paymentType = paymentInput[1]
@@ -208,7 +209,7 @@ function Rental:showRentalMenu(locationIndex, vehicles)
 end
 
 
-RegisterNetEvent('rental:client:requestSpawnPoint', function(model, plate, locationIndex)
+RegisterNetEvent('lx-rental:client:requestSpawnPoint', function(model, plate, locationIndex)
     if not rentalInstance then return end
     local location = Config.RentalLocations[locationIndex]
     if not location then return end
@@ -285,4 +286,3 @@ AddEventHandler('onClientResourceStart', function(resourceName)
         end)
     end
 end)
-
